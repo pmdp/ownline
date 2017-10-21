@@ -1,0 +1,7 @@
+{
+  "port_dst" : 60769,
+  "host_name_dst": "home.psrv.es",
+  "ssl_cert_file" : "ssl_cert/server.crt",
+  "aes_key" : "zzzzzzzzzzzzzzzz",
+  "api_key" : "zzzzzzzzzzzzzzzz"
+}
