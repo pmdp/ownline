@@ -132,3 +132,13 @@ $ openssl x509 -req -sha256 -days 365 -in server.csr -signkey server.key -out se
 ```
 
 ## 2. web
+
+Servido con un contenedor **docker** con **java**, **nginx** y **mysql** servido en una ip pública estática, con un dominio asociado: *ownline.server.com*
+
+Necesita las entidades *User*, *Service* y *Session*, para poder autenticar usuarios, activar servicios, acceder a ellos durante un tiempo determinado y ver y borrar las sesiones activas.
+
+API ejemplos:
+
+- `POST /conn/req/<service_external_id>`, solicita una conexión que crea una nueva sesión durante un tiempo
+- `POST /session/remove/<session_external_id>`, borra una sesión activa
+- `GET /service/`, `GET /service/<service_external_id>`, devuelve una lista de servicios o información de un servicio en concreto
