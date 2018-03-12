@@ -133,12 +133,111 @@ $ openssl x509 -req -sha256 -days 365 -in server.csr -signkey server.key -out se
 
 ## 2. web
 
-Servido con un contenedor **docker** con **java**, **nginx** y **mysql** servido en una ip pública estática, con un dominio asociado: *ownline.server.com*
+Servido con un contenedor **docker** con **python**, **nginx** y **mysql** servido en una ip pública estática, con un dominio asociado: *ownline.server.com*.
+
+### 2.1 Pasos
+
+1. Al acceder al servidor *ownline-web*, desde un dominio del tipo `doors.server.com`, aparecerá una pantalla de **login**, en la cual el usuario deberá autenticarse para poder acceder.
+
+2. Una vez dentro, aparecerá un **dashboard** con una serie de **servicios** los cuales usará el usuario, estos se corresponden con servidores alojados en la red interna *LAN*. 
+
+   En este paso, siempre se solicitará acceso a la API *smart-home-backend* a través de un mensaje al demonio *ownline-service* alojado en el router o gateway de la red interna y se realizará autenticación delegada para autorizar las peticiones a la API.
+
+3. Al **clickar y solicitar** un acceso a un servicio, el servidor *ownline-web* enviará un mensaje el cuál creará una regla de acceso, permitiendo acceder desde internet a cualquiera de los servicios que existen dentro de la red interna.
+
+   También enviará la solicitud a la API *smart-home-backend*, para que esta realice los pasos necesarios para que dicho servicio esté disponible, pasos como encender el dispositivo solicitado o activar el servicio dentro del dispositivo ya encendido.
+
+4. El servidor responderá con un mensaje de confirmación y en el caso de ser un servicio web consumible desde el navegador se **redireccionará** al servicio solicitado abriéndolo en una nueva pestaña, en otro caso se avisará de que la sesión está disponible durante el tiempo pedido.
+
+### 2.2 Servicios
+
+Algunos ejemplos de servicios:
+
+- smart-home-web: para controlar arduinos, pc, etc
+- plex media server: servidor de contenido multimedia
+- Nextcloud (nube privada de archivos)
+- OctoPrint (control de impresora 3d)
+- Tiny Tiny RSS
+- IRC Chat o XMPP
+- Cal DAV (calendario)
+- Notes (sustituye a Google Keep)
+- OpenVPN
+- Git server
+- Torrent server
+- SMB (General file sharing)
+- Tvheadend (streaming de DVB-T)
 
 Necesita las entidades *User*, *Service* y *Session*, para poder autenticar usuarios, activar servicios, acceder a ellos durante un tiempo determinado y ver y borrar las sesiones activas.
 
-API ejemplos:
+### 2.3 Rutas & API:
+
+#### 2.3.1 Rutas
+
+- `/`: Si el usuario no está logrado entonces mostrará el *login*, si está logeado mostrará el *dash*
+- `/login`: endpoint para el proceso de login mediante una petición POST
+- `/logout`: endpoint para deslogear a un usuario borrando cookies, etc
+
+#### 2.3.2 API
 
 - `POST /conn/req/<service_external_id>`, solicita una conexión que crea una nueva sesión durante un tiempo
 - `POST /session/remove/<session_external_id>`, borra una sesión activa
 - `GET /service/`, `GET /service/<service_external_id>`, devuelve una lista de servicios o información de un servicio en concreto
+
+### 2.4 Dockers
+
+```dockerfile
+# En general, python + requeriments + uwsgi + nginx
+
+# Python docker
+FROM python:2.7         
+ADD . /todo
+WORKDIR /todo
+EXPOSE 5000
+RUN pip install -r requirements.txt
+ENTRYPOINT ["python", "app.py"]
+######################
+FROM ubuntu:16.04
+MAINTANER Your Name "youremail@domain.tld"
+RUN apt-get update -y && \
+    apt-get install -y python-pip python-dev
+# We copy just the requirements.txt first to leverage Docker cache
+COPY ./requirements.txt /app/requirements.txt
+WORKDIR /app
+RUN pip install -r requirements.txt
+COPY . /app
+ENTRYPOINT [ "python" ]
+CMD [ "app.py" ]
+# docker build -t flask-tutorial:latest .
+# docker run -d -p 5000:5000 flask-tutorial
+######################
+FROM ubuntu:14.04
+# Update OS
+RUN sed -i 's/# \(.*multiverse$\)/\1/g' /etc/apt/sources.list
+RUN apt-get update
+RUN apt-get -y upgrade
+# Install Python
+RUN apt-get install -y python-dev python-pip
+# Add requirements.txt
+ADD requirements.txt /webapp
+# Install uwsgi Python web server
+RUN pip install uwsgi
+# Install app requirements
+RUN pip install -r requirements.txt
+# Create app directory
+ADD . /webapp
+# Set the default directory for our environment
+ENV HOME /webapp
+WORKDIR /webapp
+# Expose port 8000 for uwsgi
+EXPOSE 8000
+ENTRYPOINT ["uwsgi", "--http", "0.0.0.0:8000", "--module", "app:app", "--processes", "1", "--threads", "8"]
+# docker build --no-cache --rm -t travcunn/flask .
+# docker run -d --cpuset-cpus 1 --name flask --restart=always travcunn/flask
+
+######################
+
+
+######################
+######################
+```
+
