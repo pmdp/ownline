@@ -1,4 +1,0 @@
-Flask
-PyJWT
-tinydb
-python-telegram-bot

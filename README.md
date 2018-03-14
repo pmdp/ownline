@@ -4,7 +4,7 @@
 
 ## ToDo
 
-- run daemon as a custom user with specific priviledges
+- run ownline-service daemon as a custom user with specific priviledges
 - SSL sockets with certificate verification
 - web interface on the server for send messages from a web UI to *ownline-service*
 - tests
@@ -180,7 +180,7 @@ Necesita las entidades *User*, *Service* y *Session*, para poder autenticar usua
 #### 2.3.2 API
 
 - `POST /conn/req/<service_external_id>`, solicita una conexión que crea una nueva sesión durante un tiempo
-- `POST /session/remove/<session_external_id>`, borra una sesión activa
+- `POST /conn/rm/<session_external_id>`, borra una sesión activa
 - `GET /service/`, `GET /service/<service_external_id>`, devuelve una lista de servicios o información de un servicio en concreto
 
 ### 2.4 Dockers
