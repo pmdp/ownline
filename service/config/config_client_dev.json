@@ -1,7 +1,0 @@
-{
-  "port_dst" : 9999,
-  "host_name_dst" : "127.0.0.1",
-  "ssl_cert_file" : "ssl_cert/server.crt",
-  "aes_key" : "zzzzzzzzzzzzzzzzzzzzzzzzzzz",
-  "api_key" : "zzzzzzzzzzzzzzzzzzzzzzzzzzz"
-}

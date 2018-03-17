@@ -11,8 +11,8 @@ class Config(object):
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'very-secret-thing'
 
     # Telegram
-    TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN') or 'null'
-    TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID') or 'null'
+    TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN') or None
+    TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID') or None
 
     # JWT
     JWT_ACCESS_TOKEN_EXPIRES = datetime.timedelta(minutes=os.environ.get('JWT_ACCESS_TOKEN_TIME_DELTA')) \
@@ -25,9 +25,11 @@ class Config(object):
 
     # API
     OWNLINE_SERVICE_HOST_NAME_DST = os.environ.get('OWNLINE_SERVICE_ENDPOINT') or '127.0.0.1'
-    OWNLINE_SERVICE_PORT_DST = os.environ.get('OWNLINE_SERVICE_PORT') or 9999
-    OWNLINE_AES_KEY = os.environ.get('OWNLINE_AES_KEY') or 'zzzzzzzzzzzzzzzzzzzzzzzzzzz'
-    OWNLINE_SSL_CERT_FILE =os.environ.get('OWNLINE_SSL_CERT_FILE') or 'ssl_cert/server.crt'
+    OWNLINE_SERVICE_PORT_DST = int(os.environ.get('OWNLINE_SERVICE_PORT')) \
+        if os.environ.get('OWNLINE_SERVICE_PORT') else 9999
+    OWNLINE_AES_KEY = os.environ.get('OWNLINE_AES_KEY') or '123'
+    OWNLINE_SSL_CERT_FILE = os.environ.get('OWNLINE_SSL_CERT_FILE') or 'ssl_cert/server.crt'
+    OWNLINE_API_KEY = os.environ.get('OWNLINE_API_KEY') or '123'
 
     @staticmethod
     def init_app(app):
