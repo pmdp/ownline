@@ -30,6 +30,8 @@ class Config(object):
     OWNLINE_AES_KEY = os.environ.get('OWNLINE_AES_KEY') or '123'
     OWNLINE_SSL_CERT_FILE = os.environ.get('OWNLINE_SSL_CERT_FILE') or 'ssl_cert/server.crt'
     OWNLINE_API_KEY = os.environ.get('OWNLINE_API_KEY') or '123'
+    OWNLINE_RESPONSE_TIMEOUT = int(os.environ.get('OWNLINE_RESPONSE_TIMEOUT')) \
+        if os.environ.get('OWNLINE_RESPONSE_TIMEOUT') else 120
 
     @staticmethod
     def init_app(app):

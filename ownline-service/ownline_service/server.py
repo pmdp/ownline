@@ -53,6 +53,6 @@ def get_ownline_server_handler(message_received_queue):
             message_received_queue.put(message)
             # Wait until response
             response = response_queue.get(block=True, timeout=None)
-            self.wfile.write(response.encode('utf-8'))
+            self.wfile.write(response)
 
     return OwnlineServerHandler

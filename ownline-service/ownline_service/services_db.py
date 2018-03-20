@@ -13,5 +13,11 @@ class ServicesDB(object):
         return services
 
     def get_service(self, public_id):
-        t = list(filter(lambda n: n['public_id'] == public_id, self.services))
-        return t[0] if len(t) > 0 else None
+        #todo: change json list to dict structure
+        #todo : index by service_public_id
+        service = list(filter(lambda s: s['public_id'] == public_id, self.services))
+        return service[0] if len(service) > 0 else None
+
+    def validate_services(self):
+        #todo: validate services db structure (required fields, regex ips, uuids, ports, etc)
+        pass

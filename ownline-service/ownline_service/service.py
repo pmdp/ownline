@@ -6,8 +6,8 @@ import time
 from ownline_service.aes_cipher import AESCipher
 from ownline_service.server import OwnlineServer, get_ownline_server_handler
 from ownline_service.services_db import ServicesDB
-from ownline_service.port_forwarding_action import PortForwardingAction
-from ownline_service.reverse_proxy_action import ReverseProxyAction
+from ownline_service.actioners.port_forwarding_action import PortForwardingAction
+from ownline_service.actioners.reverse_proxy_action import ReverseProxyAction
 import threading
 import queue
 import json
@@ -47,6 +47,13 @@ class OwnlineService(run.RunDaemon):
 
         self.services_db = ServicesDB(config.SERVICES_JSON_DATABASE)
         self.message_received_queue = queue.Queue()
+
+        # Actioners
+        self.port_forwarding_action = PortForwardingAction(self.debug)
+        self.reverse_proxy_action = ReverseProxyAction(self.debug)
+
+        # Sessions list
+        self.sessions = {}
 
     def initialize(self):
         try:
@@ -89,7 +96,8 @@ class OwnlineService(run.RunDaemon):
             while True:
                 try:
                     # todo: check if server still running and all OK
-                    # todo: check if there is a session to finish (end_timeout > now)
+                    # Check for ended sessions for finish them
+                    self.check_ended_sessions()
                     # Check for a incoming message (raise Empty exception if no message)
                     queue_object = self.message_received_queue.get(block=False)
                     response = self.do_request(queue_object['cipher_message'])
@@ -97,10 +105,8 @@ class OwnlineService(run.RunDaemon):
                     queue_object['response_queue'].put(response)
                 except queue.Empty:
                     pass
-                except KeyError as e1:
-                    self.logger.error("{} not in message".format(str(e1)))
-                except Exception as e2:
-                    self.logger.error("{}".format(repr(e2)))
+                except Exception as e:
+                    self.logger.error("{}".format(e))
 
                 time.sleep(self.main_loop_delay)
 
@@ -112,81 +118,115 @@ class OwnlineService(run.RunDaemon):
         self.logger.info("Exiting OwnlineService main loop")
 
     def do_request(self, cipher_message):
-        str_message = self.aes.decrypt(cipher_message)
-        self.logger.debug("MESSAGE: " + str(str_message))
-        request = self.validate_and_process_request(str_message)
-        if request:
-            #todo: make magic (nginx + dnat)
-            #todo: if http|proxy create iptables rule accepting connection from ip_src to https nginx reverse proxy and add nginx server to configuration
-            #todo: if tcp|nat create NAT rule that forwards packets to LAN with DNAT
-            #todo: add session to list
-            #todo: if check_status in service, ping or http 200 check
-
-            service = self.services_db.get_service(request['service_public_id'])
-
-            if service['type'] == 'tcp':
-                actioner = PortForwardingAction()
-            elif service['type'] == 'http':
-                actioner = ReverseProxyAction()
-            return 'OK'
-        else:
-            return 'FAIL'
-
-    def validate_and_process_request(self, str_message):
         err_msg = False
+        response = {'status': 'FAIL'}
         try:
-            # Raise JSONDecodeError for invalid JSON
-            message = json.loads(str_message)
+            str_message = self.aes.decrypt(cipher_message)
+            self.logger.info("MESSAGE: " + str(str_message))
+            # Raise exceptions for invalid message
+            request = self.validate_and_process_request(str_message)
 
-            # First check for valid API_KEY
-            if message['api_key'] != self.api_key:
-                raise Exception("Invalid api_key: {}".format(message['api_key']))
-
-            # If we are flushing all, no more message validation needed
-            if message['action'] == 'flush':
-                return {'action': 'flush'}
-
-            if message['action'] not in ('add', 'del'):
-                raise Exception("Invalid action: {}".format(message['action']))
-
-            # New dict will be returned
-            valid_message = {}
-
-            if message['action'] == 'add':
-                regex = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-                if not regex.match(message['ip_src']):
-                    raise Exception("Invalid ip_src: {}".format(message['ip_src']))
-                # Raise ValueError for invalid UUID version 4
-                uuid.UUID(message['service_public_id'], version=4)
-                if not self.services_db.get_service(message['service_public_id']):
-                    raise Exception("Service doesnt exists in DB, id: {}".format(message['service_public_id']))
-                valid_message = {'action': 'add',
-                                 'ip_src': message['ip_src'],
-                                 'service_public_id': message['service_public_id']}
-            elif message['action'] == 'del':
-                uuid.UUID(message['session_id'], version=4)
-                #todo: check if session_id is un session list
-                valid_message = {'action': 'del', 'session_id': message['session_id']}
-            if 'duration' in message.keys():
-                if message['duration'] not in range(1, self.max_session_duration):
-                    raise Exception("Invalid duration, not in range(1, {}): {}".format(self.max_session_duration, message['duration']))
-                valid_message['duration'] = message['duration']
-            else:
-                valid_message['duration'] = self.default_session_duration
-
-            return valid_message
-
+            if request['action'] == 'flush':
+                flush_ok_1 = self.reverse_proxy_action.do_flush()
+                flush_ok_2 = self.port_forwarding_action.do_flush()
+                if flush_ok_1 and flush_ok_2:
+                    response = {'status': 'OK'}
+            elif request['action'] == 'add':
+                if 'proxy' in request['service'].keys() and request['service']['proxy'] is True:
+                    session, response = self.reverse_proxy_action.do_add(request)
+                else:
+                    session, response = self.port_forwarding_action.do_add(request)
+                if session:
+                    self.sessions[session['session_id']] = session
+            elif request['action'] == 'del':
+                if 'proxy' in request['service'].keys() and request['service']['proxy'] is True:
+                    status, response = self.reverse_proxy_action.do_del(request['session'])
+                else:
+                    status, response = self.port_forwarding_action.do_del(request['session'])
+                if status:
+                    del self.sessions[request['session']['session_id']]
         except json.JSONDecodeError as e1:
             err_msg = "Invalid JSON: {}".format(e1)
         except KeyError as e2:
             err_msg = "{} key not in message".format(e2)
         except ValueError as e3:
-            err_msg = "Invalid service_public_id UUID: {}".format(e3)
+            err_msg = "Invalid UUID: {}".format(e3)
         except Exception as e4:
             err_msg = "{}".format(e4)
         finally:
             if err_msg:
-                self.logger.error("Invalid message, cause: {}".format(err_msg))
+                self.logger.error("Error doing request, reason: {}".format(err_msg))
+            self.logger.info("Responding with: {}".format(response))
+            return self.aes.encrypt(json.dumps(response, separators=(',', ':')))
+
+    def validate_and_process_request(self, str_message):
+        # Raise JSONDecodeError for invalid JSON
+        message = json.loads(str_message)
+
+        # First check for valid API_KEY
+        if message['api_key'] != self.api_key:
+            raise Exception("Invalid api_key: {}".format(message['api_key']))
+
+        # If we are flushing all, no more message validation needed
+        if message['action'] == 'flush':
+            return {'action': 'flush'}
+
+        if message['action'] not in ('add', 'del'):
+            raise Exception("Invalid action: {}".format(message['action']))
+
+        # New dict will be returned
+        valid_message = {}
+
+        if message['action'] == 'add':
+            regex = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+            if not regex.match(message['ip_src']):
+                raise Exception("Invalid ip_src: {}".format(message['ip_src']))
+            # Raise ValueError for invalid UUID version 4
+            uuid.UUID(message['service_public_id'], version=4)
+            service = self.services_db.get_service(message['service_public_id'])
+            if not service:
+                raise Exception("Service with id: {} not exists".format(message['service_public_id']))
+            if self.check_already_session_for_that_service(message['service_public_id']):
+                raise Exception("There is already a session to that service".format(message['service_public_id']))
+            valid_message = {'action': 'add',
+                             'ip_src': message['ip_src'],
+                             'service': service}
+        elif message['action'] == 'del':
+            uuid.UUID(message['session_id'], version=4)
+            session = self.sessions[message['session_id']]
+            if not session:
+                raise Exception("Session with id: {} not exists".format(message['session_id']))
+            valid_message = {'action': 'del', 'session': session}
+
+        if 'duration' in message.keys():
+            if message['duration'] not in range(1, self.max_session_duration):
+                raise Exception("Invalid duration, not in range(1, {}): {}".format(self.max_session_duration, message['duration']))
+            valid_message['duration'] = message['duration']
+        else:
+            valid_message['duration'] = self.default_session_duration
+
+        return valid_message
+
+    def check_ended_sessions(self):
+        for key, session in self.sessions.items():
+            if time.time() > session['end_timestamp']:
+                self.logger.info("Session with id: {} ended".format(key))
+                if session['proxy']:
+                    status, response = self.reverse_proxy_action.do_del(session)
+                else:
+                    status, response = self.port_forwarding_action.do_del(session)
+
+                if status:
+                    del self.sessions[key]
+                    self.logger.info("Session with id: {} deleted".format(key))
+                    break
+
+    def check_already_session_for_that_service(self, service_public_id):
+        for key, session in self.sessions.items():
+            if session['service_public_id'] == service_public_id:
+                return True
+        return False
+
 
 
 
