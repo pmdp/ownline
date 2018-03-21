@@ -34,6 +34,18 @@ class Config(object):
     MAX_SESSION_DURATION = int(os.environ.get('MAX_SESSION_DURATION')) \
         if os.environ.get('MAX_SESSION_DURATION') else 1440
 
+    # iptables binary
+    IPTABLES_BINARY = os.environ.get('IPTABLES_BINARY') or 'iptables'
+
+    # Port forwarding target chain
+    PORT_FORWARDING_CHAIN = os.environ.get('PORT_FORWARDING_CHAIN') or 'PREROUTING'
+
+    # Reverse proxy with nginx
+    NGINX_BINARY = os.environ.get('NGINX_BINARY') or 'nginx'
+    NGINX_CONFIG_PATH = os.environ.get('NGINX_CONFIG_PATH') or 'nginx_config/dev/'
+    NGINX_SERVERS_FOLDER = 'servers.d'
+
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

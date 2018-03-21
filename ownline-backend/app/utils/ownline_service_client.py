@@ -1,7 +1,7 @@
 import socket
 import ssl
-from utils.AESCipher import AESCipher
-from ownline_backend import app
+from ..utils.AESCipher import AESCipher
+from app import app
 import json
 
 
@@ -12,6 +12,8 @@ def send(msg, timeout=30):
             raise Exception("Different ip_dst and DDNS resolve")
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(timeout)
+        # Require a certificate from the server. We used a self-signed certificate
+        # so here ca_certs must be the server certificate itself.
         ssl_socket = ssl.wrap_socket(s, ca_certs=app.config['OWNLINE_SSL_CERT_FILE'], cert_reqs=ssl.CERT_NONE,
                                      ssl_version=ssl.PROTOCOL_TLSv1_2)
 

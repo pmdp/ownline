@@ -23,7 +23,7 @@ class OwnlineService(run.RunDaemon):
 
     def __init__(self, config=None, **kwargs):
         super().__init__(**kwargs)
-        current_thread().setName("main")
+        current_thread().setName("main-thread")
         self.logger = logging.getLogger("ownline_service_log")
 
         self.debug = config.DEBUG
@@ -49,16 +49,20 @@ class OwnlineService(run.RunDaemon):
         self.message_received_queue = queue.Queue()
 
         # Actioners
-        self.port_forwarding_action = PortForwardingAction(self.debug)
-        self.reverse_proxy_action = ReverseProxyAction(self.debug)
+        self.port_forwarding_action = PortForwardingAction(debug=self.debug, iptables_binary=config.IPTABLES_BINARY)
+        self.reverse_proxy_action = ReverseProxyAction(debug=self.debug, nginx_config_path=config.NGINX_CONFIG_PATH,
+                                                       nginx_servers_folder=config.NGINX_SERVERS_FOLDER,
+                                                       nginx_binary=config.NGINX_BINARY,
+                                                       iptables_binary=config.IPTABLES_BINARY)
 
-        # Sessions list
+        # Sessions dict
         self.sessions = {}
 
     def initialize(self):
         try:
             ip_addr = socket.gethostbyname(self.host_srv)
-            self.logger.info("Listening on IP = {} - {}  and PORT = {}".format(ip_addr, self.host_srv, str(self.port_srv)))
+            self.logger.info("Listening on IP = {} - {}  and PORT = {}".format(ip_addr,
+                                                                               self.host_srv, str(self.port_srv)))
         except socket.gaierror:
             self.logger.error("Host name could not be resolved")
             return False
@@ -79,7 +83,7 @@ class OwnlineService(run.RunDaemon):
                                         known_srv_ip=self.known_srv_ip)
             self.server_thread = threading.Thread(target=self.server.serve_forever)
             self.server_thread.setDaemon(True)
-            self.server_thread.setName("server")
+            self.server_thread.setName("server-thread")
             self.server_thread.start()
             self.logger.info("server started, listening in: {}:{}".format(str(self.host_srv), str(self.port_srv)))
             return True
@@ -95,7 +99,9 @@ class OwnlineService(run.RunDaemon):
             self.logger.info('STARTING INFINTE LOOP')
             while True:
                 try:
-                    # todo: check if server still running and all OK
+                    if not self.server and not self.server_thread.is_alive():
+                        self.logger.warning("Server is not running")
+                        #todo: restart server?
                     # Check for ended sessions for finish them
                     self.check_ended_sessions()
                     # Check for a incoming message (raise Empty exception if no message)
@@ -112,7 +118,7 @@ class OwnlineService(run.RunDaemon):
 
         self.logger.info("Exiting OwnlineServer")
         #todo: if server still running shutdown and close
-        if self.server:
+        if self.server and self.server_thread.is_alive():
             self.server.shutdown()
             self.server.server_close()
         self.logger.info("Exiting OwnlineService main loop")
@@ -122,7 +128,7 @@ class OwnlineService(run.RunDaemon):
         response = {'status': 'FAIL'}
         try:
             str_message = self.aes.decrypt(cipher_message)
-            self.logger.info("MESSAGE: " + str(str_message))
+            self.logger.info("Incoming message: " + str(str_message))
             # Raise exceptions for invalid message
             request = self.validate_and_process_request(str_message)
 
@@ -139,11 +145,12 @@ class OwnlineService(run.RunDaemon):
                 if session:
                     self.sessions[session['session_id']] = session
             elif request['action'] == 'del':
-                if 'proxy' in request['service'].keys() and request['service']['proxy'] is True:
+                if 'proxy' in request['session'].keys() and request['session']['proxy'] is True:
                     status, response = self.reverse_proxy_action.do_del(request['session'])
                 else:
                     status, response = self.port_forwarding_action.do_del(request['session'])
                 if status:
+                    self.logger.info("Deleting session with id: {}".format(request['session']['session_id']))
                     del self.sessions[request['session']['session_id']]
         except json.JSONDecodeError as e1:
             err_msg = "Invalid JSON: {}".format(e1)
@@ -191,6 +198,14 @@ class OwnlineService(run.RunDaemon):
             valid_message = {'action': 'add',
                              'ip_src': message['ip_src'],
                              'service': service}
+
+            if 'duration' in message.keys():
+                if message['duration'] not in range(1, self.max_session_duration):
+                    raise Exception("Invalid duration, not in range(1, {}): {}".format(self.max_session_duration,
+                                                                                       message['duration']))
+                valid_message['duration'] = message['duration']
+            else:
+                valid_message['duration'] = self.default_session_duration
         elif message['action'] == 'del':
             uuid.UUID(message['session_id'], version=4)
             session = self.sessions[message['session_id']]
@@ -198,27 +213,20 @@ class OwnlineService(run.RunDaemon):
                 raise Exception("Session with id: {} not exists".format(message['session_id']))
             valid_message = {'action': 'del', 'session': session}
 
-        if 'duration' in message.keys():
-            if message['duration'] not in range(1, self.max_session_duration):
-                raise Exception("Invalid duration, not in range(1, {}): {}".format(self.max_session_duration, message['duration']))
-            valid_message['duration'] = message['duration']
-        else:
-            valid_message['duration'] = self.default_session_duration
-
         return valid_message
 
     def check_ended_sessions(self):
         for key, session in self.sessions.items():
             if time.time() > session['end_timestamp']:
-                self.logger.info("Session with id: {} ended".format(key))
+                self.logger.info("Ended session with id: {}".format(key))
                 if session['proxy']:
                     status, response = self.reverse_proxy_action.do_del(session)
                 else:
                     status, response = self.port_forwarding_action.do_del(session)
 
                 if status:
+                    self.logger.info("Deleting session with id: {}".format(key))
                     del self.sessions[key]
-                    self.logger.info("Session with id: {} deleted".format(key))
                     break
 
     def check_already_session_for_that_service(self, service_public_id):

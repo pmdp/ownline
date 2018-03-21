@@ -1,17 +1,14 @@
-from flask import Flask
-from config import config
+from app import app
+from ..config import config
 from flask_jwt_extended import JWTManager
 import os
 from tinydb import TinyDB
-from tinydb.storages import JSONStorage
-from tinydb.middlewares import CachingMiddleware
 import telegram
 
 # Loads configuration by environment
 config_name = os.environ.get('CONFIG_NAME') or 'development'
 
-# Initialize flask app
-app = Flask(__name__)
+# Initialize flask app configuration
 app.config.from_object(config[config_name])
 config[config_name].init_app(app)
 
@@ -30,5 +27,5 @@ if not app.debug:
 else:
     bot = None
 
-import ownline_backend.auth
-import ownline_backend.api
+from ..api import api
+from ..auth import auth

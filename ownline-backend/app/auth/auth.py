@@ -1,7 +1,8 @@
-from ownline_backend import app, bot, jwt, user_table
+from app import app
+from ..core.app_setup import bot, jwt, user_table
 from flask import request, jsonify
 from werkzeug.security import check_password_hash, safe_str_cmp
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, jwt_refresh_token_required, get_jwt_identity
 from tinydb import Query
 
 
@@ -29,6 +30,15 @@ def login():
 
     return jsonify({"msg": "Invalid request"}), 400
 
+
+@app.route('/api/v1/refresh', methods=['POST'])
+@jwt_refresh_token_required
+def refresh():
+    current_user = get_jwt_identity()
+    ret = {
+        'access_token': create_access_token(identity=current_user)
+    }
+    return jsonify(ret), 200
 
 @jwt.unauthorized_loader
 def unauthorized_loader_callback():

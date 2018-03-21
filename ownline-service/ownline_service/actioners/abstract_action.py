@@ -9,9 +9,10 @@ import time
 
 class AbstractAction(ABC):
 
-    def __init__(self, debug=True):
+    def __init__(self, debug=True, iptables_binary=None):
         self.logger = logging.getLogger('ownline_service_log')
         self.debug = debug
+        self.iptables_binary = iptables_binary
 
     def get_free_random_port(self):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
@@ -36,7 +37,7 @@ class AbstractAction(ABC):
         return
 
     @abstractmethod
-    def do_del(self, del_request):
+    def do_del(self, session):
         return
 
     @abstractmethod

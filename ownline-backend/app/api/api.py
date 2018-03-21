@@ -1,9 +1,10 @@
-from ownline_backend import app, service_table, history_table
+from app import app
+from ..core.app_setup import service_table, history_table
 from flask import request, jsonify
 from flask_jwt_extended import (jwt_required, get_jwt_identity, get_raw_jwt)
-import time as timestamp
 from tinydb import Query
-from utils import ownline_service_client
+from tinydb.operations import set
+from ..utils import ownline_service_client
 
 
 @app.route('/api/v1/service', methods=['GET'])
@@ -15,10 +16,12 @@ def get_all_services():
     output.append(service_table.all())
     return jsonify({"services": output}), 200
 
+
 @app.route('/api/v1/session/history', methods=['GET'])
 @jwt_required
 def get_history():
     return jsonify({"hisotry": history_table.all()}), 200
+
 
 @app.route('/api/v1/session/request', methods=['POST'])
 @jwt_required
@@ -50,7 +53,8 @@ Session request:
         msg["duration"] = duration
 
     response = ownline_service_client.send(msg, timeout=app.config['OWNLINE_RESPONSE_TIMEOUT'])
-    if validate_response(response):
+    app.logger.info("Response from ownline_service: {}".format(response))
+    if validate_adding_response(response):
         history_table.insert({"session_id": response['session_id'],
                               "service_public_id": service_public_id,
                               "port_dst": response['port_dst'],
@@ -62,10 +66,34 @@ Session request:
     else:
         return jsonify({"msg": "FAIL"}), 400
 
+
 @app.route('/api/v1/session/delete', methods=['POST'])
 @jwt_required
 def delete_session():
-    pass
+    if not request.is_json:
+        return jsonify({"msg": "Invalid request"}), 400
+
+    session_id = request.json.get('session_id')
+    session = history_table.get(Query().session_id == session_id)
+    if not session_id or not session:
+        return jsonify({"msg": "Invalid request"}), 400
+
+    app.logger.info("""
+Deleting session:
+    session_id: {}""".format(session_id))
+    msg = {
+        'action': 'del',
+        'session_id': session_id,
+        "api_key": app.config['OWNLINE_API_KEY']
+    }
+    response = ownline_service_client.send(msg, timeout=app.config['OWNLINE_RESPONSE_TIMEOUT'])
+    app.logger.info("Response from ownline_service: {}".format(response))
+    if response['status'] == 'FAIL':
+        return jsonify({"msg": "Invalid request"}), 400
+    else:
+        history_table.update(set('terminated', True), Query().session_id == session_id)
+        return jsonify({"msg": "OK"}), 200
+
 
 @app.route('/api/v1/public_ip', methods=['GET'])
 @jwt_required
@@ -73,7 +101,7 @@ def get_public_ip():
     return jsonify({"public_ip": request.remote_addr})  # or access_route[0] for get HTTP_X_FORWARDED_FOR nginx proxy
 
 
-def validate_response(response):
+def validate_adding_response(response):
     if not response:
         return False
     try:
@@ -85,6 +113,6 @@ def validate_response(response):
             raise Exception("Not all required fields included in response: {}".format(response.keys()))
         return True
     except Exception as e:
-        app.logger.error(repr(e))
+        app.logger.error(e)
         return False
 

@@ -1,14 +1,15 @@
 import os
 import datetime
 
-basedir = os.path.abspath(os.path.dirname(__file__))
+basedir = os.path.abspath(os.path.dirname(__package__))
 
 
 class Config(object):
     # Flask general
     DEBUG = False
     TESTING = False
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'very-secret-thing'
+    LOGGER_NAME = "ownline_backend_logger"
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'very-secret-thing' # use os.urandom(24)
 
     # Telegram
     TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN') or None

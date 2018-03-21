@@ -28,18 +28,18 @@ class OwnlineServer(TCPServer):
         self.logger.debug("SSLSocket peername: {}".format(repr(ssl_conn.getpeername())))
         self.logger.debug("SSLSocket cipher: {}".format(ssl_conn.cipher()))
         self.logger.debug("SSLSocket ssl version: {}".format(ssl_conn.ssl_version))
-        self.logger.info("ACCEPTED CONNECTION from {}".format(str(addr)))
+        self.logger.info("Accepted connection from {}".format(str(addr)))
         return ssl_conn, addr
 
     def verify_request(self, request, client_address):
         #todo: validate SSL connection
         # Called automatically, if return true continue with the request
         if str(client_address[0]) != self.known_srv_ip:
-            self.logger.error("INVALID known_srv_ip {}".format(str(client_address[0])))
+            self.logger.error("Connection comes from untrusted ip: {}".format(str(client_address[0])))
             return False
         return True
 
-
+# factory method for handler
 def get_ownline_server_handler(message_received_queue):
     class OwnlineServerHandler(StreamRequestHandler):
 

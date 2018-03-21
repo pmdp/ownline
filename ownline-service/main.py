@@ -8,7 +8,7 @@ import sys
 if __name__ == '__main__':
     if len(sys.argv) == 2:
         if 'start' == sys.argv[1]:
-            logger.info("STARTING ownline-service")
+            logger.info("Starting ownline-service")
             logger.info("CONFIG NAME = {}".format(config_name))
             config_print = """
     KNOWN_SRV_IP = {}
@@ -32,10 +32,10 @@ if __name__ == '__main__':
                 logger.info("Daemon mode")
                 service.start()
         elif 'stop' == sys.argv[1]:
-            logger.warning("STOPPING ownline-service")
+            logger.warning("Stopping ownline-service")
             service.stop()
         elif 'restart' == sys.argv[1]:
-            logger.warning("RESTARTING ownline-service")
+            logger.warning("Restarting ownline-service")
             service.restart()
         else:
             logger.error("Unknown command")

@@ -5,11 +5,41 @@
 ## ToDo
 
 - run ownline-service daemon as a custom user with specific priviledges
+
 - SSL sockets with certificate verification
+
 - web interface on the server for send messages from a web UI to *ownline-service*
+
 - tests
-- Refactor client:
-  - Gets server.crt, api_key, aes_key from config file
+
+- **Login brute force protection**: ip based, recaptcha, [nginx-http-limit-req](http://nginx.org/en/docs/http/ngx_http_limit_req_module.html) [other blog](https://www.nginx.com/blog/rate-limiting-nginx/)
+
+- **Nginx protected static files**, only allow public access to index.html (with login form):
+
+  - https://www.nginx.com/resources/wiki/start/topics/examples/xsendfile/
+
+  - https://www.nginx.com/resources/wiki/start/topics/examples/x-accel/
+
+  - [Flask K-accel](https://github.com/bapakode/Flask-Kaccel)
+
+  - [Flask K-accel Docs](https://flask-kaccel.readthedocs.io/en/latest/)
+
+  - From Flask return headers to nginx **X-Accel-Redirect**
+
+    ```Python
+        response.headers["Content-Disposition"] = "attachment; filename=app.js
+        response.headers["X-Accel-Redirect"] = "/static/webapp/..."
+        response.headers["Content-Type"] = "application/js"
+    ```
+
+- **Constantly** check public_ip in mobile (service-worker, android app?) and make requests to some constant servers, like nextcloud, hass, etc
+
+- **Deploy**: 
+
+  - http://flask.pocoo.org/docs/0.12/deploying/#deployment
+  - http://flask.pocoo.org/docs/0.12/deploying/uwsgi/
+  - https://uwsgi-docs.readthedocs.io/en/latest/Nginx.html
+  - https://www.digitalocean.com/community/tutorials/how-to-serve-flask-applications-with-uwsgi-and-nginx-on-ubuntu-16-04
 
 ## 1. service
 
@@ -154,6 +184,7 @@ Servido con un contenedor **docker** con **python**, **nginx** y **mysql** servi
 Algunos ejemplos de servicios:
 
 - smart-home-web: para controlar arduinos, pc, etc
+- Hass: home assistant
 - plex media server: servidor de contenido multimedia
 - Nextcloud (nube privada de archivos)
 - OctoPrint (control de impresora 3d)

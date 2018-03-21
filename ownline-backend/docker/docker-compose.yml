@@ -1,0 +1,7 @@
+version; '3'
+
+uwsgi:
+  restart: always
+  build: ./uwsgi
+  volumes:
+    - /u

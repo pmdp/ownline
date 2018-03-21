@@ -9,7 +9,7 @@ config_name = os.environ.get('CONFIG_NAME') or 'development'
 config = configuration[config_name]
 
 logger = logging.getLogger("ownline_service_log")
-logging.basicConfig(level=config.LOGGING_LEVEL, format='%(levelname)-5s - %(threadName)-6s - %(asctime)s : %(message)s')
+logging.basicConfig(level=config.LOGGING_LEVEL, format='%(levelname)-5s - %(asctime)s - %(threadName)-13s - %(module)s : %(message)s')
 # Set file logging if production
 if not config.DEBUG:
     logging.basicConfig(filename=config.LOG_FILE)
