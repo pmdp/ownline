@@ -1,6 +1,0 @@
-Flask
-flask-jwt-extended
-tinydb
-ujson
-python-telegram-bot
-pycrypto

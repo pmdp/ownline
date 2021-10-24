@@ -4,42 +4,11 @@
 
 ## ToDo
 
-- run ownline-service daemon as a custom user with specific priviledges
-
-- SSL sockets with certificate verification
-
-- web interface on the server for send messages from a web UI to *ownline-service*
-
 - tests
-
-- **Login brute force protection**: ip based, recaptcha, [nginx-http-limit-req](http://nginx.org/en/docs/http/ngx_http_limit_req_module.html) [other blog](https://www.nginx.com/blog/rate-limiting-nginx/)
-
-- **Nginx protected static files**, only allow public access to index.html (with login form):
-
-  - https://www.nginx.com/resources/wiki/start/topics/examples/xsendfile/
-
-  - https://www.nginx.com/resources/wiki/start/topics/examples/x-accel/
-
-  - [Flask K-accel](https://github.com/bapakode/Flask-Kaccel)
-
-  - [Flask K-accel Docs](https://flask-kaccel.readthedocs.io/en/latest/)
-
-  - From Flask return headers to nginx **X-Accel-Redirect**
-
-    ```Python
-        response.headers["Content-Disposition"] = "attachment; filename=app.js
-        response.headers["X-Accel-Redirect"] = "/static/webapp/..."
-        response.headers["Content-Type"] = "application/js"
-    ```
-
-- **Constantly** check public_ip in mobile (service-worker, android app?) and make requests to some constant servers, like nextcloud, hass, etc
-
-- **Deploy**: 
-
-  - http://flask.pocoo.org/docs/0.12/deploying/#deployment
-  - http://flask.pocoo.org/docs/0.12/deploying/uwsgi/
-  - https://uwsgi-docs.readthedocs.io/en/latest/Nginx.html
-  - https://www.digitalocean.com/community/tutorials/how-to-serve-flask-applications-with-uwsgi-and-nginx-on-ubuntu-16-04
+- **New actioner**: not nat, not proxy, only activates a service at a LAN device (ej: activate teamviewer, Plex, power on pc, etc)
+- Service to check some LAN devices status (rpi, pc, etc)
+- For reverse proxy services, allow always use standard 443 port for https, but difference services by domain, eg:`plex.ownline.server.com` that way is possible to access the service inside networks that blocks out traffic at strange ports, **¿Multiple 443 listen nginx servers ?**
+- **connlimit** iptables http://ipset.netfilter.org/iptables-extensions.man.html
 
 ## 1. service
 
@@ -154,11 +123,9 @@ $ tail -n 10 -f /var/log/doorOpener.log
 
 ```bash
 # To generate the self-signed SSL key and certificate:
-$ openssl genrsa -des3 -passout pass:x -out server.pass.key 2048
-$ openssl rsa -passin pass:x -in server.pass.key -out server.key
-$ rm server.pass.key
-$ openssl req -new -key server.key -out server.csr
-$ openssl x509 -req -sha256 -days 365 -in server.csr -signkey server.key -out server.crt
+openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt
+
+# Add Country: ES and City: Madrid, all other values with nothing
 ```
 
 ## 2. web
@@ -270,5 +237,11 @@ ENTRYPOINT ["uwsgi", "--http", "0.0.0.0:8000", "--module", "app:app", "--process
 
 ######################
 ######################
+```
+
+## Mysql docker
+
+```Bash
+docker exec some-mysql sh -c 'exec mysqldump --all-databases -uroot -p"$MYSQL_ROOT_PASSWORD"' > all-databases.sql
 ```
 
