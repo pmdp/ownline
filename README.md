@@ -1,4 +1,5 @@
-<img title="" src="resources/ownline-pwa-dektop.png" alt="" width="430" data-align="inline"><img title="" src="resources/ownline-pwa-mobile.png" alt="" width="175" data-align="inline">
+![Ownline PWA desktop](resources/ownline-pwa-desktop.png)
+![Ownline PWA mobile](resources/ownline-pwa-mobile.png)
 
 Ownline is a way to manage **remote** access to **private services** that run inside a home/office network (**LAN**).
 
