@@ -1,3 +1,5 @@
+<img title="" src="resources/ownline-pwa-dektop.png" alt="" width="430" data-align="inline"><img title="" src="resources/ownline-pwa-mobile.png" alt="" width="175" data-align="inline">
+
 Ownline is a way to manage **remote** access to **private services** that run inside a home/office network (**LAN**).
 
 Does this by using two forwarding techniques at different levels of the OSI model, ***"port forwarding"*** at the transport layer and ***"reverse proxy"*** at the application layer. By configuring the necessary rules with either of these two techniques, we gain access to a particular service within the LAN. Ownline abstracts these concepts and associates each of these "rules" to a user session, which is ephemeral and is linked to a public IP to allow access and a TCP/UDP port of the router to send requests to. In this way, we get temporary and IP-authenticated access to private services within our LAN from anywhere on the Internet.
