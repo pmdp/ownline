@@ -41,7 +41,7 @@ The automatic session update is implemented in two different ways, which may or 
 ### Screenshots
 |   |   |
 :-------------------------:|:-------------------------:
-![Ownline PWA 1](resources/ownline_pwa_screenshot_1.png)  |  ![Ownline PWA 2](resources/ownline_pwa_screenshot_2.png)
+![Ownline PWA 1](resources/ownline_pwa_screenshot_1.png)  |  ![Ownline PWA 2](resources/ownline_pwa_screenshot_5.png)
 ![Ownline PWA 2](resources/ownline_pwa_screenshot_4.png)  |  ![Ownline PWA desktop](resources/ownline_pwa_screenshot_3.png)
 
 ![Ownline PWA desktop](resources/ownline-pwa-desktop.png)
