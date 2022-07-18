@@ -1,19 +1,19 @@
-*Ownline* is a way to manage on-demand and automatic **authorized accesses** to **private services** running within a local home/office network (**LAN**).
+*Ownline* is a way to manage on-demand and automatic **authorized connections** to **private services** running within a local home/office network (**LAN**).
 
-Does this by using forwarding techniques at different levels of the OSI model, ***port forwarding*** at the transport layer and ***reverse proxy*** at the application layer. By configuring the necessary rules with either of these two techniques, we gain access to a particular service within the LAN from the outside WAN. *Ownline* abstracts these concepts and associates each of these "rules" to **ephemeral** user **sessions**, which are linked to a public IP to allow access and a TCP/UDP port of the router to send requests to. In this way, we get **temporary** and **IP authenticated** access to private services within the LAN from anywhere on the internet.
+Does this by using forwarding techniques at different levels of the OSI model, ***port forwarding*** at the transport layer and ***reverse proxy*** at the application layer. By configuring the necessary rules with either of these two techniques, we gain access to a particular services within the LAN from the outside (WAN). *Ownline* abstracts these concepts and associates each of these "rules" to **ephemeral** user **sessions**, which are linked to a public IP to allow access and a TCP/UDP port of the router to send requests to. In this way, we get **temporary** and **IP authenticated** access to private services from anywhere on the internet.
 
-Takes care of creating and updating sessions periodically in order to have constant and transparent access to desired services. It does this by obtaining the trusted IP of a user and sending it to ownline from time to time. Explained below in *"Automatic session update"*.
+Also takes care of creating and updating sessions periodically in order to have constant and transparent access to desired services. It does this by obtaining the user trusted IP and sending it to ownline from time to time. Explained below in *"Automatic session update"*.
 
 ## Routing methods:
 
-* [Port forwarding](https://en.wikipedia.org/wiki/Port_forwarding): runs iptables rules directly on the router's firewall to open a NAT forwarding rule from the trusted public IP/port to the LAN IP/port. Sample: `iptables -t nat -I PREROUTING -s <trusted_ip>/32 -p tcp -m tcp --dport <port_dst> -j DNAT --to-destination <ip_dst>:<port_dst_lan>`. 
-* [Reverse proxy](https://en.wikipedia.org/wiki/Reverse_proxy): creates web services in [nginx](https://www.nginx.com/), which route (proxy) to other web services on the LAN, also needs to run a new firewall rule to open the service port at the router for the specific source IP. One advantage is to be able to use a single point of termination of the web encryption and diferent sub-domains for each service, like:  `service_name.domain.com`.
+* [Port forwarding](https://en.wikipedia.org/wiki/Port_forwarding): Runs iptables rules directly on the router's firewall to open NAT port forwarding from the trusted public IP/port to the private LAN IP/port. Sample: `iptables -t nat -I PREROUTING -s <trusted_ip>/32 -p tcp -m tcp --dport <port_dst> -j DNAT --to-destination <ip_dst>:<port_dst_lan>`.
+* [Reverse proxy](https://en.wikipedia.org/wiki/Reverse_proxy): Creates web services in [nginx](https://www.nginx.com/), which route (proxy) to other web services on the LAN, also needs to run a new firewall rule to open the service port at the router for the specific source IP. One advantage is to be able to use a single point of termination of the web encryption and diferent sub-domains for each service, like: `https://service_name.domain.com:9999`.
 
 ## Modules
 
 Ownline is divided into 4 parts or modules (go to each repo for more info):
 
-* **[ownline-core](https://github.com/pmdp/ownline-core)**: Python daemon that uses asyncio. Creates the necessary rules to access LAN services, runs on the router, executes two services:
+* **[ownline-core](https://github.com/pmdp/ownline-core)**: Python daemon that uses [asyncio](https://docs.python.org/3/library/asyncio.html). Creates the necessary rules to access LAN services, runs on the router, executes two separated services:
   
   - **CMD**: Server that receives commands via SSL sockets responsible for creating or deleting sessions (port forwarding or web proxy rules).
   
@@ -31,11 +31,15 @@ With automatic sessions the user have constant access to desired services withou
 
 Automatic session update is implemented in two different ways, which may or may not work at the same time:
 
-* **SPA**: Single Packet Autentication. (*Recommended*) ownline-core runs a UDP server that waits for encrypted messages from trusted IPs, validates this message and forwards it to ownline-web to trigger an automatic session update for a user.
+* **SPA**: Single Packet Autentication. (*Recommended*) ownline-core runs a UDP server that waits for encrypted and signed messages from trusted IPs, validates this message and forwards it to ownline-web to trigger an automatic session update for a user.
   * Disadvantages: needs an open UDP port on the router.
-  * Advantages: no external server is required, the trusted IP is obtained from the IP header itself and not from the message.
+  * Advantages: 
+    * No external server is required
+    * Trusted public IP is obtained from the IP header itself and not from the message.
 * **MQTT**: ownline-web listens on an MQTT channel to receive public IP updates from a user.
-  * Disadvantages: it needs a public server, the IP must be obtained at the client with third party services and sent in the message, so sometimes it may not match the real public IP that arrives at the home router and therefore not get access.
+  * Disadvantages:
+    * It needs a public MQTT server
+    * Trusted public IP must be obtained at the client using third party services like [ipify](https://www.ipify.org). Sometimes it may not match the real public IP that user have to reach home router, therefore the access is denied.
   * Advantages: no need to open an UDP port on the router.
 
 ## Requirements:
@@ -43,6 +47,12 @@ Automatic session update is implemented in two different ways, which may or may 
 - A **router**, with the possibility of installing software on it. Runs ***ownline-core*** daemon that needs **python**, **iptables** and **nginx** to work.
 
 - **Domain** pointing to home/office router public IP (use [ddns](https://en.wikipedia.org/wiki/Dynamic_DNS) for dynamic public IPs).
+
+
+
+## To do
+
+- Make it more extensible to be able to easily use other firewalls like *nftables*, *ufw* or other proxies like *caddy*.
 
 ### SPA flow diagram
 
