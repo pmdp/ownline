@@ -2,7 +2,7 @@
 
 Does this by using forwarding techniques at different levels of the OSI model, ***port forwarding*** at the transport layer and ***reverse proxy*** at the application layer. By configuring the necessary rules with either of these two techniques, we gain access to a particular services within the LAN from the outside (WAN). *Ownline* abstracts these concepts and associates each of these "rules" to **ephemeral** user **sessions**, which are linked to a public IP to allow access and a TCP/UDP port of the router to send requests to. In this way, we get **temporary** and **IP authenticated** access to private services from anywhere on the internet.
 
-### Routing methods:
+### Forwarding techniques:
 
 * [Port forwarding](https://en.wikipedia.org/wiki/Port_forwarding): Runs iptables rules directly on the router's firewall to open NAT port forwarding from the trusted public IP/port to the private LAN IP/port. Sample: `iptables -t nat -I PREROUTING -s <trusted_ip>/32 -p tcp -m tcp --dport <port_dst> -j DNAT --to-destination <ip_dst>:<port_dst_lan>`.
 * [Reverse proxy](https://en.wikipedia.org/wiki/Reverse_proxy): Creates web services in [nginx](https://www.nginx.com/), which route (proxy) to other web services on the LAN, also needs to run a new firewall rule to open the service port at the router for the specific source IP. One advantage is to be able to use a single point of termination of the web encryption and diferent sub-domains for each service, like: `https://service_name.domain.com:9999`.
@@ -27,19 +27,19 @@ Ownline is divided into 4 parts or modules (go to each repo for more info):
 
 ## Automatic session update
 
-With automatic sessions the user have constant access to desired services without worring to create a session each time, this is useful for services that need constant access like notifications or automatic uploads.
+With automatic sessions the user have constant access to desired services without worring about creating a session each time, this is useful for services that need constant access like notifications or automatic uploads.
 
 Automatic session update is implemented in two different ways, which may or may not work at the same time:
 
-* **SPA**: Single Packet Autentication. (*Recommended*) ownline-core runs a UDP server that waits for encrypted and signed messages from trusted IPs, validates this message and forwards it to ownline-web to trigger an automatic session update for a user.
-  * Disadvantages: needs an open UDP port on the router.
+* **SPA**: Single Packet Autentication. (*Recommended*) ownline-core runs a UDP server that waits for encrypted and signed messages from trusted IPs, validates this message and forwards it to ownline-web in order to trigger an automatic session update for a user.
+  * Disadvantages: needs an always open UDP port on the router.
   * Advantages: 
     * No external server is required
     * Trusted public IP is obtained from the IP header itself and not from the message.
 * **MQTT**: ownline-web listens on an MQTT channel to receive public IP updates from a user.
   * Disadvantages:
     * It needs a public MQTT server
-    * Trusted public IP must be obtained at the client using third party services like [ipify](https://www.ipify.org). Sometimes it may not match the real public IP that user have to reach home router, therefore the access is denied.
+    * Trusted public IP must be obtained at the client using third party services like [ipify](https://www.ipify.org). Sometimes it may not match the real public IP that user have to reach home router, therefore the access is denied by the firewall.
   * Advantages: no need to open an UDP port on the router.
 
 ## Requirements:
